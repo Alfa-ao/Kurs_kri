@@ -30,9 +30,9 @@ fetch('data.json')
         const years = Object.keys(processedData).sort();
         
         const colors = {
-            '2024': { buy: '#38bdf8', sell: '#f472b6' },
-            '2025': { buy: '#34d399', sell: '#fbbf24' },
-            '2026': { buy: '#a78bfa', sell: '#fb923c' }
+            '2024': { buy: '#38bdf8', sell: '#38bff8aa' },
+            '2025': { buy: '#34d399', sell: '#34d399aa' },
+            '2026': { buy: '#a78bfa', sell: '#a78bfaaa' }
         };
 
         years.forEach(year => {
@@ -201,12 +201,5 @@ fetch('data.json')
         document.getElementById('resetZoom').addEventListener('click', function() {
             chart.resetZoom();
         });
-        
-        setTimeout(() => {
-            const canvas = document.getElementById('crystalChart');
-            canvas.style.height = '450px';
-            canvas.height = 450;
-            chart.resize();
-        }, 100);
     })
     .catch(error => console.error('Ошибка загрузки данных:', error));

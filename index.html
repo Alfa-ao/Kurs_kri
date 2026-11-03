@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Динамика курса кристаллов</title>
-    <link rel="stylesheet" href="style.css">
-    
+    <link rel="stylesheet" href="style.css?v=3">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
@@ -18,12 +18,14 @@
             <p class="subtitle">Средние дневные значения за 2024 - 2026 гг.</p>
             <button id="resetZoom" class="reset-btn">Сбросить масштаб</button>
         </header>
-        
+
         <div class="chart-wrapper">
-            <canvas id="crystalChart"></canvas>
+            <div class="chart-box">
+                <canvas id="crystalChart"></canvas>
+            </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=3"></script>
 </body>
 </html>
