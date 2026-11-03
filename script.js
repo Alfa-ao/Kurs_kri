@@ -30,9 +30,9 @@ fetch('data.json')
         const years = Object.keys(processedData).sort();
         
         const colors = {
-            '2024': { buy: '#38bdf8', sell: '#38bdf850' },
-            '2025': { buy: '#34d399', sell: '#34d39950' },
-            '2026': { buy: '#a78bfa', sell: '#a78bfa50' }
+            '2024': { buy: '#38bdf8', sell: '#38bff8aa' },
+            '2025': { buy: '#34d399', sell: '#34d399aa' },
+            '2026': { buy: '#a78bfa', sell: '#a78bfaaa' }
         };
 
         years.forEach(year => {
