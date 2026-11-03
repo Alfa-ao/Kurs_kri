@@ -1,15 +1,12 @@
-// Загрузить данные из локального файла
 fetch('data.json')
     .then(response => response.json())
     .then(rawData => {
         const processedData = {};
+        const RATE_MULTIPLIER = 10000;
 
-        // Обработать каждую запись из лога
         rawData.forEach(item => {
             const date = new Date(item.time);
             const year = date.getFullYear().toString();
-            
-            // Нормализовать дату к 2000 году для корректного наложения линий на одну ось X
             const normalizedDate = new Date(2000, date.getMonth(), date.getDate());
             const dateKey = `${date.getMonth()}-${date.getDate()}`;
 
@@ -25,37 +22,45 @@ fetch('data.json')
                 };
             }
 
-            // Собрать все значения за день для последующего усреднения
-            processedData[year][dateKey].buy.push(item.buy);
-            processedData[year][dateKey].sell.push(item.sell);
+            processedData[year][dateKey].buy.push(item.buy / RATE_MULTIPLIER);
+            processedData[year][dateKey].sell.push(item.sell / RATE_MULTIPLIER);
         });
 
         const datasets = [];
         const years = Object.keys(processedData).sort();
         
-        // Задать цветовую палитру для каждого года
         const colors = {
             '2024': { buy: '#38bdf8', sell: '#f472b6' },
             '2025': { buy: '#34d399', sell: '#fbbf24' },
             '2026': { buy: '#a78bfa', sell: '#fb923c' }
         };
 
-        // Сформировать датасеты для Chart.js
         years.forEach(year => {
             const buyPoints = [];
             const sellPoints = [];
-
-            Object.values(processedData[year]).forEach(dayData => {
-                const avgBuy = dayData.buy.reduce((a, b) => a + b, 0) / dayData.buy.length;
-                const avgSell = dayData.sell.reduce((a, b) => a + b, 0) / dayData.sell.length;
-
-                buyPoints.push({ x: dayData.date, y: avgBuy });
-                sellPoints.push({ x: dayData.date, y: avgSell });
-            });
-
-            // Отсортировать точки по времени
-            buyPoints.sort((a, b) => a.x - b.x);
-            sellPoints.sort((a, b) => a.x - b.x);
+            
+            const yearNum = parseInt(year);
+            const isLeapYear = (yearNum % 4 === 0 && yearNum % 100 !== 0) || (yearNum % 400 === 0);
+            const daysInYear = isLeapYear ? 366 : 365;
+            
+            for (let day = 0; day < daysInYear; day++) {
+                const date = new Date(2000, 0, day + 1);
+                const month = date.getMonth();
+                const dayOfMonth = date.getDate();
+                const dateKey = `${month}-${dayOfMonth}`;
+                
+                if (processedData[year][dateKey]) {
+                    const dayData = processedData[year][dateKey];
+                    const avgBuy = dayData.buy.reduce((a, b) => a + b, 0) / dayData.buy.length;
+                    const avgSell = dayData.sell.reduce((a, b) => a + b, 0) / dayData.sell.length;
+                    
+                    buyPoints.push({ x: date, y: avgBuy });
+                    sellPoints.push({ x: date, y: avgSell });
+                } else {
+                    buyPoints.push({ x: date, y: null });
+                    sellPoints.push({ x: date, y: null });
+                }
+            }
 
             const yearColors = colors[year] || { buy: '#ffffff', sell: '#888888' };
 
@@ -68,7 +73,8 @@ fetch('data.json')
                 fill: false,
                 pointRadius: 0,
                 pointHoverRadius: 6,
-                borderWidth: 2.5
+                borderWidth: 2.5,
+                spanGaps: false
             });
 
             datasets.push({
@@ -81,11 +87,11 @@ fetch('data.json')
                 pointRadius: 0,
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
-                borderDash: [5, 5]
+                borderDash: [5, 5],
+                spanGaps: false
             });
         });
 
-        // Инициализировать график
         const ctx = document.getElementById('crystalChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
@@ -108,7 +114,13 @@ fetch('data.json')
                         grid: { color: 'rgba(148, 163, 184, 0.1)' }
                     },
                     y: {
-                        ticks: { color: '#94a3b8', font: { size: 12 } },
+                        ticks: { 
+                            color: '#94a3b8', 
+                            font: { size: 12 },
+                            callback: function(value) {
+                                return value.toFixed(2) + ' зол.';
+                            }
+                        },
                         grid: { color: 'rgba(148, 163, 184, 0.1)' }
                     }
                 },
@@ -128,13 +140,18 @@ fetch('data.json')
                         borderWidth: 1,
                         padding: 12,
                         callbacks: {
-                            // Показать реальный день и месяц во всплывающей подсказке
                             title: function(context) {
                                 const date = new Date(context[0].parsed.x);
                                 return date.toLocaleDateString('ru-RU', { 
                                     day: 'numeric', 
                                     month: 'long' 
                                 });
+                            },
+                            label: function(context) {
+                                if (context.parsed.y === null) {
+                                    return `${context.dataset.label}: нет данных`;
+                                }
+                                return `${context.dataset.label}: ${context.parsed.y.toFixed(4)} зол.`;
                             }
                         }
                     }
