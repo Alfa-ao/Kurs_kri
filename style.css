@@ -13,7 +13,6 @@ body {
 .container {
     width: 100%;
     max-width: 1200px;
-	height: 450px;
 }
 
 header {
@@ -60,8 +59,10 @@ h1 {
     border-radius: 20px;
     padding: 30px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    height: 450px;
 }
 
 canvas {
-    max-height: 600px;
+    width: 100% !important;
+    height: 100% !important;
 }
