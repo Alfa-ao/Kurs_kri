@@ -1,4 +1,3 @@
-/* Базовые стили и темная тема */
 body {
     background: #0b1120;
     color: #e2e8f0;
@@ -33,10 +32,26 @@ h1 {
 .subtitle {
     color: #94a3b8;
     margin-top: 8px;
+    margin-bottom: 20px;
     font-size: 1.1rem;
 }
 
-/* Контейнер для графика с эффектом стекла */
+.reset-btn {
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reset-btn:hover {
+    background: rgba(56, 189, 248, 0.3);
+    border-color: rgba(56, 189, 248, 0.6);
+}
+
 .chart-wrapper {
     background: rgba(30, 41, 59, 0.6);
     backdrop-filter: blur(12px);

@@ -5,7 +5,7 @@ fetch('data.json')
         const RATE_MULTIPLIER = 10000;
 
         rawData.forEach(item => {
-            const date = new Date(item.time);
+            const date = new Date(item.time.replace(' ', 'T'));
             const year = date.getFullYear().toString();
             const normalizedDate = new Date(2000, date.getMonth(), date.getDate());
             const dateKey = `${date.getMonth()}-${date.getDate()}`;
@@ -93,7 +93,7 @@ fetch('data.json')
         });
 
         const ctx = document.getElementById('crystalChart').getContext('2d');
-        new Chart(ctx, {
+        const chart = new Chart(ctx, {
             type: 'line',
             data: { datasets: datasets },
             options: {
@@ -154,9 +154,52 @@ fetch('data.json')
                                 return `${context.dataset.label}: ${context.parsed.y.toFixed(4)} зол.`;
                             }
                         }
+                    },
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'x',
+                            modifierKey: null
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                                speed: 0.1
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'x',
+                            onZoomComplete: function({chart}) {
+                                const zoomLevel = chart.scales.x.max - chart.scales.x.min;
+                                const daysVisible = zoomLevel / (1000 * 60 * 60 * 24);
+                                
+                                if (daysVisible < 30) {
+                                    chart.options.scales.x.time.unit = 'day';
+                                    chart.options.scales.x.time.displayFormats = { day: 'dd MMM' };
+                                } else if (daysVisible < 90) {
+                                    chart.options.scales.x.time.unit = 'week';
+                                    chart.options.scales.x.time.displayFormats = { week: 'dd MMM' };
+                                } else {
+                                    chart.options.scales.x.time.unit = 'month';
+                                    chart.options.scales.x.time.displayFormats = { month: 'MMM' };
+                                }
+                                chart.update();
+                            }
+                        },
+                        limits: {
+                            x: {
+                                min: 'original',
+                                max: 'original'
+                            }
+                        }
                     }
                 }
             }
+        });
+
+        document.getElementById('resetZoom').addEventListener('click', function() {
+            chart.resetZoom();
         });
     })
     .catch(error => console.error('Ошибка загрузки данных:', error));
