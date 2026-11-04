@@ -19,13 +19,19 @@ fetch('data.json')
                 buy: [], 
                 sell: [], 
                 date: normalizedDate,
-                times: []
+                hourlyData: {}
             };
+        }
+        
+        const hourKey = date.getHours();
+        if (!processedData[year][dateKey].hourlyData[hourKey]) {
+            processedData[year][dateKey].hourlyData[hourKey] = { buy: [], sell: [] };
         }
         
         processedData[year][dateKey].buy.push(item.buy / RATE_MULTIPLIER);
         processedData[year][dateKey].sell.push(item.sell / RATE_MULTIPLIER);
-        processedData[year][dateKey].times.push(date);
+        processedData[year][dateKey].hourlyData[hourKey].buy.push(item.buy / RATE_MULTIPLIER);
+        processedData[year][dateKey].hourlyData[hourKey].sell.push(item.sell / RATE_MULTIPLIER);
     });
     
     const datasets = [];
@@ -145,7 +151,15 @@ fetch('data.json')
                             const zoomLevel = chart.scales.x.max - chart.scales.x.min;
                             const daysVisible = zoomLevel / (1000 * 60 * 60 * 24);
                             
-                            if (daysVisible < 30) {
+                            if (daysVisible < 2) {
+                                return date.toLocaleDateString('ru-RU', { 
+                                    day: 'numeric', 
+                                    month: 'long',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                            } else if (daysVisible < 30) {
                                 return date.toLocaleDateString('ru-RU', { 
                                     day: 'numeric', 
                                     month: 'long',
@@ -163,27 +177,7 @@ fetch('data.json')
                                 return `${context.dataset.label}: нет данных`;
                             }
                             return `${context.dataset.label}: ${context.parsed.y.toFixed(4)} зол.`;
-                        },
-                        afterBody: function(context) {
-                            const date = new Date(context[0].parsed.x);
-                            const zoomLevel = chart.scales.x.max - chart.scales.x.min;
-                            const daysVisible = zoomLevel / (1000 * 60 * 60 * 24);
-                            
-                            if (daysVisible < 7) {
-                                return [`День недели: ${date.toLocaleDateString('ru-RU', { weekday: 'long' })}`];
-                            }
-                            return [];
                         }
-                    }
-                },
-                crosshair: {
-                    line: {
-                        color: '#f8fafc',
-                        width: 1,
-                        dashPattern: [5, 5]
-                    },
-                    sync: {
-                        enabled: true
                     }
                 },
                 zoom: {
@@ -205,15 +199,34 @@ fetch('data.json')
                             const zoomLevel = chart.scales.x.max - chart.scales.x.min;
                             const daysVisible = zoomLevel / (1000 * 60 * 60 * 24);
                             
-                            if (daysVisible < 30) {
+                            if (daysVisible < 2) {
+                                chart.options.scales.x.time.unit = 'hour';
+                                chart.options.scales.x.time.displayFormats = { hour: 'dd MMM HH:mm' };
+                                chart.data.datasets.forEach(dataset => {
+                                    dataset.pointRadius = 4;
+                                    dataset.pointHoverRadius = 8;
+                                });
+                            } else if (daysVisible < 30) {
                                 chart.options.scales.x.time.unit = 'day';
                                 chart.options.scales.x.time.displayFormats = { day: 'dd MMM' };
+                                chart.data.datasets.forEach(dataset => {
+                                    dataset.pointRadius = 0;
+                                    dataset.pointHoverRadius = 6;
+                                });
                             } else if (daysVisible < 90) {
                                 chart.options.scales.x.time.unit = 'week';
                                 chart.options.scales.x.time.displayFormats = { week: 'dd MMM' };
+                                chart.data.datasets.forEach(dataset => {
+                                    dataset.pointRadius = 0;
+                                    dataset.pointHoverRadius = 6;
+                                });
                             } else {
                                 chart.options.scales.x.time.unit = 'month';
                                 chart.options.scales.x.time.displayFormats = { month: 'MMM' };
+                                chart.data.datasets.forEach(dataset => {
+                                    dataset.pointRadius = 0;
+                                    dataset.pointHoverRadius = 6;
+                                });
                             }
                             chart.update();
                         }
