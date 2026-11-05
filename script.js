@@ -50,6 +50,8 @@ fetch('data.json')
         '2026': { buy: '#a78bfa', sell: '#a78bfaaa' }
     };
     
+    const MAX_GAP_MS = 7 * 24 * 60 * 60 * 1000;
+    
     function generateDailyDatasets() {
         const datasets = [];
         const years = Object.keys(processedData).sort();
@@ -91,7 +93,7 @@ fetch('data.json')
                 pointRadius: 0,
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
-                spanGaps: false
+                spanGaps: MAX_GAP_MS
             });
             datasets.push({
                 label: `Продажа ${year}`,
@@ -104,7 +106,7 @@ fetch('data.json')
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
                 borderDash: [5, 5],
-                spanGaps: false
+                spanGaps: MAX_GAP_MS
             });
         });
         
@@ -155,7 +157,7 @@ fetch('data.json')
                 pointRadius: 0,
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
-                spanGaps: false
+                spanGaps: MAX_GAP_MS
             });
             datasets.push({
                 label: `Продажа ${year}`,
@@ -168,7 +170,7 @@ fetch('data.json')
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
                 borderDash: [5, 5],
-                spanGaps: false
+                spanGaps: MAX_GAP_MS
             });
         });
         
@@ -256,7 +258,6 @@ fetch('data.json')
                             const date = new Date(context[0].parsed.x);
                             const dayVisible = chart.scales.x.max - chart.scales.x.min;
                             const daysVisible = dayVisible / (1000 * 60 * 60 * 24);
-                            
                             if (daysVisible < 14) {
                                 return date.toLocaleDateString('ru-RU', { 
                                     day: 'numeric', 
