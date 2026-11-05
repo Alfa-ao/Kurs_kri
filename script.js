@@ -7,19 +7,24 @@ fetch('data.json')
     rawData.forEach(item => {
         const date = new Date(item.time.replace(' ', 'T'));
         const year = date.getFullYear().toString();
+        const month = date.getMonth();
+        const day = date.getDate();
         const hour = date.getHours();
+        const dateKey = `${month}-${day}-${hour}`;
         
         if (!processedData[year]) {
             processedData[year] = {};
         }
-        if (!processedData[year][hour]) {
-            processedData[year][hour] = { 
+        if (!processedData[year][dateKey]) {
+            const timestamp = new Date(2000, month, day, hour).getTime();
+            processedData[year][dateKey] = { 
                 buy: [], 
-                sell: [] 
+                sell: [], 
+                timestamp: timestamp 
             };
         }
-        processedData[year][hour].buy.push(item.buy / RATE_MULTIPLIER);
-        processedData[year][hour].sell.push(item.sell / RATE_MULTIPLIER);
+        processedData[year][dateKey].buy.push(item.buy / RATE_MULTIPLIER);
+        processedData[year][dateKey].sell.push(item.sell / RATE_MULTIPLIER);
     });
     
     const datasets = [];
@@ -33,17 +38,29 @@ fetch('data.json')
     years.forEach(year => {
         const buyPoints = [];
         const sellPoints = [];
+        const yearNum = parseInt(year);
+        const isLeapYear = (yearNum % 4 === 0 && yearNum % 100 !== 0) || (yearNum % 400 === 0);
+        const daysInYear = isLeapYear ? 366 : 365;
         
-        for (let hour = 0; hour < 24; hour++) {
-            if (processedData[year][hour]) {
-                const hourData = processedData[year][hour];
-                const avgBuy = hourData.buy.reduce((a, b) => a + b, 0) / hourData.buy.length;
-                const avgSell = hourData.sell.reduce((a, b) => a + b, 0) / hourData.sell.length;
-                buyPoints.push({ x: hour, y: avgBuy });
-                sellPoints.push({ x: hour, y: avgSell });
-            } else {
-                buyPoints.push({ x: hour, y: null });
-                sellPoints.push({ x: hour, y: null });
+        for (let day = 0; day < daysInYear; day++) {
+            const date = new Date(2000, 0, day + 1);
+            const month = date.getMonth();
+            const dayOfMonth = date.getDate();
+            
+            for (let hour = 0; hour < 24; hour++) {
+                const dateKey = `${month}-${dayOfMonth}-${hour}`;
+                const timestamp = new Date(2000, month, dayOfMonth, hour).getTime();
+                
+                if (processedData[year][dateKey]) {
+                    const hourData = processedData[year][dateKey];
+                    const avgBuy = hourData.buy.reduce((a, b) => a + b, 0) / hourData.buy.length;
+                    const avgSell = hourData.sell.reduce((a, b) => a + b, 0) / hourData.sell.length;
+                    buyPoints.push({ x: timestamp, y: avgBuy });
+                    sellPoints.push({ x: timestamp, y: avgSell });
+                } else {
+                    buyPoints.push({ x: timestamp, y: null });
+                    sellPoints.push({ x: timestamp, y: null });
+                }
             }
         }
         
@@ -111,23 +128,13 @@ fetch('data.json')
             },
             scales: {
                 x: {
-                    type: 'linear',
-                    min: 0,
-                    max: 23,
-                    ticks: {
-                        color: '#94a3b8',
-                        font: { size: 12 },
-                        stepSize: 1,
-                        callback: function(value) {
-                            return value + ':00';
-                        }
+                    type: 'time',
+                    time: {
+                        unit: 'month',
+                        displayFormats: { month: 'MMM' }
                     },
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    title: {
-                        display: true,
-                        text: 'Час дня',
-                        color: '#94a3b8'
-                    }
+                    ticks: { color: '#94a3b8', font: { size: 12 } },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
                 },
                 y: {
                     ticks: { 
@@ -157,8 +164,11 @@ fetch('data.json')
                     padding: 12,
                     callbacks: {
                         title: function(context) {
-                            const hour = Math.round(context[0].parsed.x);
-                            return `${hour}:00 - ${hour + 1}:00`;
+                            const date = new Date(context[0].parsed.x);
+                            return date.toLocaleDateString('ru-RU', { 
+                                day: 'numeric', 
+                                month: 'long' 
+                            }) + ' ' + date.getHours() + ':00';
                         },
                         label: function(context) {
                             if (context.parsed.y === null) {
@@ -184,13 +194,28 @@ fetch('data.json')
                         },
                         mode: 'x',
                         onZoomComplete: function({chart}) {
+                            const zoomLevel = chart.scales.x.max - chart.scales.x.min;
+                            const daysVisible = zoomLevel / (1000 * 60 * 60 * 24);
+                            if (daysVisible < 7) {
+                                chart.options.scales.x.time.unit = 'hour';
+                                chart.options.scales.x.time.displayFormats = { hour: 'dd MMM HH:mm' };
+                            } else if (daysVisible < 30) {
+                                chart.options.scales.x.time.unit = 'day';
+                                chart.options.scales.x.time.displayFormats = { day: 'dd MMM' };
+                            } else if (daysVisible < 90) {
+                                chart.options.scales.x.time.unit = 'week';
+                                chart.options.scales.x.time.displayFormats = { week: 'dd MMM' };
+                            } else {
+                                chart.options.scales.x.time.unit = 'month';
+                                chart.options.scales.x.time.displayFormats = { month: 'MMM' };
+                            }
                             chart.update();
                         }
                     },
                     limits: {
                         x: {
-                            min: 0,
-                            max: 23
+                            min: 'original',
+                            max: 'original'
                         }
                     }
                 }
