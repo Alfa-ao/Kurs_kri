@@ -120,6 +120,7 @@ fetch('data.json')
         type: 'line',
         data: { datasets: datasets },
         options: {
+            animation: false,
             responsive: true,
             maintainAspectRatio: false,
             interaction: {
@@ -148,6 +149,11 @@ fetch('data.json')
                 }
             },
             plugins: {
+                decimation: {
+                    enabled: true,
+                    algorithm: 'lttb',
+                    threshold: 100
+                },
                 legend: {
                     labels: { 
                         color: '#e2e8f0',
