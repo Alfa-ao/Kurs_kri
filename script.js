@@ -52,6 +52,28 @@ fetch('data.json')
     
     const MAX_GAP_MS = 7 * 24 * 60 * 60 * 1000;
     
+    function filterGaps(points) {
+        const filtered = [];
+        let lastValidPoint = null;
+        
+        for (let i = 0; i < points.length; i++) {
+            const point = points[i];
+            
+            if (point.y !== null) {
+                if (lastValidPoint !== null) {
+                    const gap = point.x - lastValidPoint.x;
+                    if (gap > MAX_GAP_MS) {
+                        filtered.push({ x: point.x, y: null });
+                    }
+                }
+                filtered.push(point);
+                lastValidPoint = point;
+            }
+        }
+        
+        return filtered;
+    }
+    
     function generateDailyDatasets() {
         const datasets = [];
         const years = Object.keys(processedData).sort();
@@ -76,16 +98,16 @@ fetch('data.json')
                     const avgSell = dayData.sell.reduce((a, b) => a + b, 0) / dayData.sell.length;
                     buyPoints.push({ x: timestamp, y: avgBuy });
                     sellPoints.push({ x: timestamp, y: avgSell });
-                } else {
-                    buyPoints.push({ x: timestamp, y: null });
-                    sellPoints.push({ x: timestamp, y: null });
                 }
             }
+            
+            const filteredBuyPoints = filterGaps(buyPoints);
+            const filteredSellPoints = filterGaps(sellPoints);
             
             const yearColors = colors[year] || { buy: '#ffffff', sell: '#888888' };
             datasets.push({
                 label: `Покупка ${year}`,
-                data: buyPoints,
+                data: filteredBuyPoints,
                 borderColor: yearColors.buy,
                 backgroundColor: yearColors.buy + '20',
                 tension: 0.4,
@@ -93,11 +115,11 @@ fetch('data.json')
                 pointRadius: 0,
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
-                spanGaps: MAX_GAP_MS
+                spanGaps: false
             });
             datasets.push({
                 label: `Продажа ${year}`,
-                data: sellPoints,
+                data: filteredSellPoints,
                 borderColor: yearColors.sell,
                 backgroundColor: yearColors.sell + '20',
                 tension: 0.4,
@@ -106,7 +128,7 @@ fetch('data.json')
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
                 borderDash: [5, 5],
-                spanGaps: MAX_GAP_MS
+                spanGaps: false
             });
         });
         
@@ -139,17 +161,17 @@ fetch('data.json')
                         const avgSell = hourData.sell.reduce((a, b) => a + b, 0) / hourData.sell.length;
                         buyPoints.push({ x: timestamp, y: avgBuy });
                         sellPoints.push({ x: timestamp, y: avgSell });
-                    } else {
-                        buyPoints.push({ x: timestamp, y: null });
-                        sellPoints.push({ x: timestamp, y: null });
                     }
                 }
             }
             
+            const filteredBuyPoints = filterGaps(buyPoints);
+            const filteredSellPoints = filterGaps(sellPoints);
+            
             const yearColors = colors[year] || { buy: '#ffffff', sell: '#888888' };
             datasets.push({
                 label: `Покупка ${year}`,
-                data: buyPoints,
+                data: filteredBuyPoints,
                 borderColor: yearColors.buy,
                 backgroundColor: yearColors.buy + '20',
                 tension: 0.4,
@@ -157,11 +179,11 @@ fetch('data.json')
                 pointRadius: 0,
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
-                spanGaps: MAX_GAP_MS
+                spanGaps: false
             });
             datasets.push({
                 label: `Продажа ${year}`,
-                data: sellPoints,
+                data: filteredSellPoints,
                 borderColor: yearColors.sell,
                 backgroundColor: yearColors.sell + '20',
                 tension: 0.4,
@@ -170,7 +192,7 @@ fetch('data.json')
                 pointHoverRadius: 6,
                 borderWidth: 2.5,
                 borderDash: [5, 5],
-                spanGaps: MAX_GAP_MS
+                spanGaps: false
             });
         });
         
