@@ -63,7 +63,8 @@ fetch('data.json')
                 if (lastValidPoint !== null) {
                     const gap = point.x - lastValidPoint.x;
                     if (gap > MAX_GAP_MS) {
-                        filtered.push({ x: point.x, y: null });
+                        const midTimestamp = (lastValidPoint.x + point.x) / 2;
+                        filtered.push({ x: midTimestamp, y: null });
                     }
                 }
                 filtered.push(point);
@@ -231,7 +232,7 @@ fetch('data.json')
             responsive: true,
             maintainAspectRatio: false,
             interaction: {
-                mode: 'index',
+                mode: 'nearest',
                 intersect: false,
             },
             scales: {
