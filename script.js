@@ -1,23 +1,3 @@
-const verticalLinePlugin = {
-    id: 'verticalLine',
-    afterDatasetsDraw(chart) {
-        const { ctx, chartArea: { top, bottom } } = chart;
-        const activeElements = chart.getActiveElements();
-        if (activeElements.length > 0) {
-            const xValue = activeElements[0].element.x;
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(xValue, top);
-            ctx.lineTo(xValue, bottom);
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
-            ctx.setLineDash([5, 5]);
-            ctx.stroke();
-            ctx.restore();
-        }
-    }
-};
-
 fetch('data.json')
 .then(response => response.json())
 .then(rawData => {
@@ -27,23 +7,19 @@ fetch('data.json')
     rawData.forEach(item => {
         const date = new Date(item.time.replace(' ', 'T'));
         const year = date.getFullYear().toString();
-        const normalizedDate = new Date(2000, date.getMonth(), date.getDate(), date.getHours());
-        const dateKey = `${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
+        const hour = date.getHours();
         
         if (!processedData[year]) {
             processedData[year] = {};
         }
-        
-        if (!processedData[year][dateKey]) {
-            processedData[year][dateKey] = { 
+        if (!processedData[year][hour]) {
+            processedData[year][hour] = { 
                 buy: [], 
-                sell: [], 
-                date: normalizedDate 
+                sell: [] 
             };
         }
-        
-        processedData[year][dateKey].buy.push(item.buy / RATE_MULTIPLIER);
-        processedData[year][dateKey].sell.push(item.sell / RATE_MULTIPLIER);
+        processedData[year][hour].buy.push(item.buy / RATE_MULTIPLIER);
+        processedData[year][hour].sell.push(item.sell / RATE_MULTIPLIER);
     });
     
     const datasets = [];
@@ -57,34 +33,21 @@ fetch('data.json')
     years.forEach(year => {
         const buyPoints = [];
         const sellPoints = [];
-        const yearNum = parseInt(year);
-        const isLeapYear = (yearNum % 4 === 0 && yearNum % 100 !== 0) || (yearNum % 400 === 0);
-        const daysInYear = isLeapYear ? 366 : 365;
         
-        for (let day = 0; day < daysInYear; day++) {
-            for (let hour = 0; hour < 24; hour++) {
-                const date = new Date(2000, 0, 1);
-                date.setDate(day + 1);
-                date.setHours(hour);
-                const month = date.getMonth();
-                const dayOfMonth = date.getDate();
-                const dateKey = `${month}-${dayOfMonth}-${hour}`;
-                
-                if (processedData[year][dateKey]) {
-                    const hourData = processedData[year][dateKey];
-                    const avgBuy = hourData.buy.reduce((a, b) => a + b, 0) / hourData.buy.length;
-                    const avgSell = hourData.sell.reduce((a, b) => a + b, 0) / hourData.sell.length;
-                    buyPoints.push({ x: date, y: avgBuy });
-                    sellPoints.push({ x: date, y: avgSell });
-                } else {
-                    buyPoints.push({ x: date, y: null });
-                    sellPoints.push({ x: date, y: null });
-                }
+        for (let hour = 0; hour < 24; hour++) {
+            if (processedData[year][hour]) {
+                const hourData = processedData[year][hour];
+                const avgBuy = hourData.buy.reduce((a, b) => a + b, 0) / hourData.buy.length;
+                const avgSell = hourData.sell.reduce((a, b) => a + b, 0) / hourData.sell.length;
+                buyPoints.push({ x: hour, y: avgBuy });
+                sellPoints.push({ x: hour, y: avgSell });
+            } else {
+                buyPoints.push({ x: hour, y: null });
+                sellPoints.push({ x: hour, y: null });
             }
         }
         
         const yearColors = colors[year] || { buy: '#ffffff', sell: '#888888' };
-        
         datasets.push({
             label: `Покупка ${year}`,
             data: buyPoints,
@@ -97,7 +60,6 @@ fetch('data.json')
             borderWidth: 2.5,
             spanGaps: false
         });
-        
         datasets.push({
             label: `Продажа ${year}`,
             data: sellPoints,
@@ -113,6 +75,29 @@ fetch('data.json')
         });
     });
     
+    const crosshairPlugin = {
+        id: 'crosshair',
+        afterDraw(chart) {
+            if (chart.tooltip?._active?.length) {
+                const activePoint = chart.tooltip._active[0];
+                const ctx = chart.ctx;
+                const x = activePoint.element.x;
+                const topY = chart.scales.y.top;
+                const bottomY = chart.scales.y.bottom;
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(x, topY);
+                ctx.lineTo(x, bottomY);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    };
+    
     const ctx = document.getElementById('crystalChart').getContext('2d');
     const chart = new Chart(ctx, {
         type: 'line',
@@ -126,13 +111,23 @@ fetch('data.json')
             },
             scales: {
                 x: {
-                    type: 'time',
-                    time: {
-                        unit: 'month',
-                        displayFormats: { month: 'MMM' }
+                    type: 'linear',
+                    min: 0,
+                    max: 23,
+                    ticks: {
+                        color: '#94a3b8',
+                        font: { size: 12 },
+                        stepSize: 1,
+                        callback: function(value) {
+                            return value + ':00';
+                        }
                     },
-                    ticks: { color: '#94a3b8', font: { size: 12 } },
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                    title: {
+                        display: true,
+                        text: 'Час дня',
+                        color: '#94a3b8'
+                    }
                 },
                 y: {
                     ticks: { 
@@ -154,20 +149,16 @@ fetch('data.json')
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
                     titleColor: '#f8fafc',
                     bodyColor: '#cbd5e1',
-                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
                     borderWidth: 1,
                     padding: 12,
                     callbacks: {
                         title: function(context) {
-                            const date = new Date(context[0].parsed.x);
-                            return date.toLocaleDateString('ru-RU', { 
-                                day: 'numeric', 
-                                month: 'long',
-                                hour: '2-digit'
-                            });
+                            const hour = Math.round(context[0].parsed.x);
+                            return `${hour}:00 - ${hour + 1}:00`;
                         },
                         label: function(context) {
                             if (context.parsed.y === null) {
@@ -193,44 +184,19 @@ fetch('data.json')
                         },
                         mode: 'x',
                         onZoomComplete: function({chart}) {
-                            const zoomLevel = chart.scales.x.max - chart.scales.x.min;
-                            const daysVisible = zoomLevel / (1000 * 60 * 60 * 24);
-                            
-                            if (daysVisible < 3) {
-                                chart.options.scales.x.time.unit = 'hour';
-                                chart.options.scales.x.time.displayFormats = { hour: 'dd MMM HH:mm' };
-                                chart.data.datasets.forEach(dataset => {
-                                    dataset.pointRadius = 3;
-                                    dataset.pointHoverRadius = 7;
-                                });
-                            } else if (daysVisible < 30) {
-                                chart.options.scales.x.time.unit = 'day';
-                                chart.options.scales.x.time.displayFormats = { day: 'dd MMM' };
-                                chart.data.datasets.forEach(dataset => {
-                                    dataset.pointRadius = 0;
-                                    dataset.pointHoverRadius = 6;
-                                });
-                            } else {
-                                chart.options.scales.x.time.unit = 'month';
-                                chart.options.scales.x.time.displayFormats = { month: 'MMM' };
-                                chart.data.datasets.forEach(dataset => {
-                                    dataset.pointRadius = 0;
-                                    dataset.pointHoverRadius = 6;
-                                });
-                            }
                             chart.update();
                         }
                     },
                     limits: {
                         x: {
-                            min: 'original',
-                            max: 'original'
+                            min: 0,
+                            max: 23
                         }
                     }
                 }
             }
         },
-        plugins: [verticalLinePlugin]
+        plugins: [crosshairPlugin]
     });
     
     document.getElementById('resetZoom').addEventListener('click', function() {
