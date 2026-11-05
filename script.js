@@ -1,4 +1,6 @@
-fetch('data.json')
+const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/Alfa-ao/Kurs_kri/refs/heads/main/data.json';
+
+fetch(GITHUB_RAW_URL + '?t=' + Date.now())
 .then(response => response.json())
 .then(rawData => {
     const processedData = {};
