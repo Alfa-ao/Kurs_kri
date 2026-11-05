@@ -63,8 +63,7 @@ fetch('data.json')
                 if (lastValidPoint !== null) {
                     const gap = point.x - lastValidPoint.x;
                     if (gap > MAX_GAP_MS) {
-                        const midTimestamp = (lastValidPoint.x + point.x) / 2;
-                        filtered.push({ x: midTimestamp, y: null });
+                        filtered.push({ x: point.x, y: null, isGap: true });
                     }
                 }
                 filtered.push(point);
@@ -232,8 +231,9 @@ fetch('data.json')
             responsive: true,
             maintainAspectRatio: false,
             interaction: {
-                mode: 'index',
-                intersect: false,
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
             },
             scales: {
                 x: {
@@ -276,6 +276,9 @@ fetch('data.json')
                     borderColor: 'rgba(255, 255, 255, 0.1)',
                     borderWidth: 1,
                     padding: 12,
+                    filter: function(tooltipItem) {
+                        return tooltipItem.parsed.y !== null && !tooltipItem.raw.isGap;
+                    },
                     callbacks: {
                         title: function(context) {
                             const date = new Date(context[0].parsed.x);
@@ -294,9 +297,6 @@ fetch('data.json')
                             }
                         },
                         label: function(context) {
-                            if (context.parsed.y === null) {
-                                return `${context.dataset.label}: нет данных`;
-                            }
                             return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} зол.`;
                         }
                     }
