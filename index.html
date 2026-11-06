@@ -15,12 +15,15 @@
     <div class="container">
         <header>
             <h1>Курс кристаллов</h1>
-            <p class="subtitle">Средние дневные значения за 2024 - 2026 гг.</p>
+            <p class="subtitle">Средние значения за 2024 - 2026 гг. Наследие Богов.</p>
             <button id="resetZoom" class="reset-btn">Сбросить масштаб</button>
         </header>
-
         <div class="chart-wrapper">
-            <div class="chart-box">
+            <div class="loader" id="loader">
+                <div class="spinner"></div>
+                <div class="loader-text">Загрузка данных...</div>
+            </div>
+            <div class="chart-box" id="chartBox" style="display: none;">
                 <canvas id="crystalChart"></canvas>
             </div>
         </div>

@@ -1,7 +1,27 @@
 const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/Alfa-ao/Kurs_kri/refs/heads/main/data.json';
 
+const loader = document.getElementById('loader');
+const chartBox = document.getElementById('chartBox');
+
+function showLoader() {
+    loader.style.display = 'flex';
+    chartBox.style.display = 'none';
+}
+
+function hideLoader() {
+    loader.style.display = 'none';
+    chartBox.style.display = 'block';
+}
+
+showLoader();
+
 fetch(GITHUB_RAW_URL + '?t=' + Date.now())
-.then(response => response.json())
+.then(response => {
+    if (!response.ok) {
+        throw new Error(`Ошибка загрузки: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+})
 .then(rawData => {
     const processedData = {};
     const RATE_MULTIPLIER = 10000;
@@ -12,38 +32,40 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
         const month = date.getMonth();
         const day = date.getDate();
         const hour = date.getHours();
+        const minute = date.getMinutes();
+        const min5 = Math.floor(minute / 5) * 5;
+        
         const dateKey = `${month}-${day}`;
         const hourKey = `${month}-${day}-${hour}`;
+        const min5Key = `${month}-${day}-${hour}-${min5}`;
         
         if (!processedData[year]) {
             processedData[year] = {
                 daily: {},
-                hourly: {}
+                hourly: {},
+                min5: {}
             };
         }
         
         if (!processedData[year].daily[dateKey]) {
             const timestamp = new Date(2000, month, day).getTime();
-            processedData[year].daily[dateKey] = { 
-                buy: [], 
-                sell: [], 
-                timestamp: timestamp 
-            };
+            processedData[year].daily[dateKey] = { buy: [], sell: [], timestamp: timestamp };
         }
-        
         if (!processedData[year].hourly[hourKey]) {
             const timestamp = new Date(2000, month, day, hour).getTime();
-            processedData[year].hourly[hourKey] = { 
-                buy: [], 
-                sell: [], 
-                timestamp: timestamp 
-            };
+            processedData[year].hourly[hourKey] = { buy: [], sell: [], timestamp: timestamp };
+        }
+        if (!processedData[year].min5[min5Key]) {
+            const timestamp = new Date(2000, month, day, hour, min5).getTime();
+            processedData[year].min5[min5Key] = { buy: [], sell: [], timestamp: timestamp };
         }
         
         processedData[year].daily[dateKey].buy.push(item.buy / RATE_MULTIPLIER);
         processedData[year].daily[dateKey].sell.push(item.sell / RATE_MULTIPLIER);
         processedData[year].hourly[hourKey].buy.push(item.buy / RATE_MULTIPLIER);
         processedData[year].hourly[hourKey].sell.push(item.sell / RATE_MULTIPLIER);
+        processedData[year].min5[min5Key].buy.push(item.buy / RATE_MULTIPLIER);
+        processedData[year].min5[min5Key].sell.push(item.sell / RATE_MULTIPLIER);
     });
     
     const colors = {
@@ -60,7 +82,6 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
         
         for (let i = 0; i < points.length; i++) {
             const point = points[i];
-            
             if (point.y !== null) {
                 if (lastValidPoint !== null) {
                     const gap = point.x - lastValidPoint.x;
@@ -72,7 +93,6 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
                 lastValidPoint = point;
             }
         }
-        
         return filtered;
     }
     
@@ -105,8 +125,8 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
             
             const filteredBuyPoints = filterGaps(buyPoints);
             const filteredSellPoints = filterGaps(sellPoints);
-            
             const yearColors = colors[year] || { buy: '#ffffff', sell: '#888888' };
+            
             datasets.push({
                 label: `Покупка ${year}`,
                 data: filteredBuyPoints,
@@ -133,7 +153,6 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
                 spanGaps: false
             });
         });
-        
         return datasets;
     }
     
@@ -169,8 +188,8 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
             
             const filteredBuyPoints = filterGaps(buyPoints);
             const filteredSellPoints = filterGaps(sellPoints);
-            
             const yearColors = colors[year] || { buy: '#ffffff', sell: '#888888' };
+            
             datasets.push({
                 label: `Покупка ${year}`,
                 data: filteredBuyPoints,
@@ -197,7 +216,71 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
                 spanGaps: false
             });
         });
+        return datasets;
+    }
+
+    function generateMin5Datasets() {
+        const datasets = [];
+        const years = Object.keys(processedData).sort();
         
+        years.forEach(year => {
+            const buyPoints = [];
+            const sellPoints = [];
+            const yearNum = parseInt(year);
+            const isLeapYear = (yearNum % 4 === 0 && yearNum % 100 !== 0) || (yearNum % 400 === 0);
+            const daysInYear = isLeapYear ? 366 : 365;
+            
+            for (let day = 0; day < daysInYear; day++) {
+                const date = new Date(2000, 0, day + 1);
+                const month = date.getMonth();
+                const dayOfMonth = date.getDate();
+                
+                for (let hour = 0; hour < 24; hour++) {
+                    for (let min5 = 0; min5 < 60; min5 += 5) {
+                        const min5Key = `${month}-${dayOfMonth}-${hour}-${min5}`;
+                        const timestamp = new Date(2000, month, dayOfMonth, hour, min5).getTime();
+                        
+                        if (processedData[year].min5[min5Key]) {
+                            const min5Data = processedData[year].min5[min5Key];
+                            const avgBuy = min5Data.buy.reduce((a, b) => a + b, 0) / min5Data.buy.length;
+                            const avgSell = min5Data.sell.reduce((a, b) => a + b, 0) / min5Data.sell.length;
+                            buyPoints.push({ x: timestamp, y: avgBuy });
+                            sellPoints.push({ x: timestamp, y: avgSell });
+                        }
+                    }
+                }
+            }
+            
+            const filteredBuyPoints = filterGaps(buyPoints);
+            const filteredSellPoints = filterGaps(sellPoints);
+            const yearColors = colors[year] || { buy: '#ffffff', sell: '#888888' };
+            
+            datasets.push({
+                label: `Покупка ${year}`,
+                data: filteredBuyPoints,
+                borderColor: yearColors.buy,
+                backgroundColor: yearColors.buy + '20',
+                tension: 0.4,
+                fill: false,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                borderWidth: 2.5,
+                spanGaps: false
+            });
+            datasets.push({
+                label: `Продажа ${year}`,
+                data: filteredSellPoints,
+                borderColor: yearColors.sell,
+                backgroundColor: yearColors.sell + '20',
+                tension: 0.4,
+                fill: false,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                borderWidth: 2.5,
+                borderDash: [5, 5],
+                spanGaps: false
+            });
+        });
         return datasets;
     }
     
@@ -284,18 +367,17 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
                     callbacks: {
                         title: function(context) {
                             const date = new Date(context[0].parsed.x);
-                            const dayVisible = chart.scales.x.max - chart.scales.x.min;
-                            const daysVisible = dayVisible / (1000 * 60 * 60 * 24);
-                            if (daysVisible < 14) {
-                                return date.toLocaleDateString('ru-RU', { 
-                                    day: 'numeric', 
-                                    month: 'long' 
-                                }) + ' ' + date.getHours() + ':00';
+                            const zoomLevel = chart.scales.x.max - chart.scales.x.min;
+                            const hoursVisible = zoomLevel / (1000 * 60 * 60);
+                            const daysVisible = hoursVisible / 24;
+                            
+                            if (hoursVisible < 12) {
+                                return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) + ' ' + 
+                                       String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+                            } else if (daysVisible < 14) {
+                                return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) + ' ' + date.getHours() + ':00';
                             } else {
-                                return date.toLocaleDateString('ru-RU', { 
-                                    day: 'numeric', 
-                                    month: 'long' 
-                                });
+                                return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
                             }
                         },
                         label: function(context) {
@@ -320,17 +402,24 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
                         mode: 'x',
                         onZoomComplete: function({chart}) {
                             const zoomLevel = chart.scales.x.max - chart.scales.x.min;
-                            const daysVisible = zoomLevel / (1000 * 60 * 60 * 24);
+                            const hoursVisible = zoomLevel / (1000 * 60 * 60);
+                            const daysVisible = hoursVisible / 24;
                             
                             let currentMode = chart.options.plugins.zoom._currentMode || 'daily';
                             
-                            if (daysVisible < 14 && currentMode === 'daily') {
+                            if (hoursVisible < 12 && currentMode !== 'min5') {
+                                chart.data.datasets = generateMin5Datasets();
+                                chart.options.scales.x.time.unit = 'minute';
+                                chart.options.scales.x.time.displayFormats = { minute: 'HH:mm' };
+                                chart.options.plugins.zoom._currentMode = 'min5';
+                                chart.update('none');
+                            } else if (hoursVisible >= 12 && daysVisible < 14 && currentMode !== 'hourly') {
                                 chart.data.datasets = generateHourlyDatasets();
                                 chart.options.scales.x.time.unit = 'hour';
                                 chart.options.scales.x.time.displayFormats = { hour: 'dd MMM HH:mm' };
                                 chart.options.plugins.zoom._currentMode = 'hourly';
                                 chart.update('none');
-                            } else if (daysVisible >= 14 && currentMode === 'hourly') {
+                            } else if (daysVisible >= 14 && currentMode !== 'daily') {
                                 chart.data.datasets = generateDailyDatasets();
                                 chart.options.plugins.zoom._currentMode = 'daily';
                                 
@@ -346,20 +435,27 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
                                 }
                                 chart.update('none');
                             } else {
-                                if (daysVisible < 7) {
+                                if (currentMode === 'daily') {
+                                    if (daysVisible < 30) {
+                                        chart.options.scales.x.time.unit = 'day';
+                                        chart.options.scales.x.time.displayFormats = { day: 'dd MMM' };
+                                    } else if (daysVisible < 90) {
+                                        chart.options.scales.x.time.unit = 'week';
+                                        chart.options.scales.x.time.displayFormats = { week: 'dd MMM' };
+                                    } else {
+                                        chart.options.scales.x.time.unit = 'month';
+                                        chart.options.scales.x.time.displayFormats = { month: 'MMM' };
+                                    }
+                                    chart.update('none');
+                                } else if (currentMode === 'hourly') {
                                     chart.options.scales.x.time.unit = 'hour';
                                     chart.options.scales.x.time.displayFormats = { hour: 'dd MMM HH:mm' };
-                                } else if (daysVisible < 30) {
-                                    chart.options.scales.x.time.unit = 'day';
-                                    chart.options.scales.x.time.displayFormats = { day: 'dd MMM' };
-                                } else if (daysVisible < 90) {
-                                    chart.options.scales.x.time.unit = 'week';
-                                    chart.options.scales.x.time.displayFormats = { week: 'dd MMM' };
-                                } else {
-                                    chart.options.scales.x.time.unit = 'month';
-                                    chart.options.scales.x.time.displayFormats = { month: 'MMM' };
+                                    chart.update('none');
+                                } else if (currentMode === 'min5') {
+                                    chart.options.scales.x.time.unit = 'minute';
+                                    chart.options.scales.x.time.displayFormats = { minute: 'HH:mm' };
+                                    chart.update('none');
                                 }
-                                chart.update('none');
                             }
                         }
                     },
@@ -378,12 +474,22 @@ fetch(GITHUB_RAW_URL + '?t=' + Date.now())
     chart.options.plugins.zoom._currentMode = 'daily';
     
     document.getElementById('resetZoom').addEventListener('click', function() {
-        chart.resetZoom();
         chart.data.datasets = generateDailyDatasets();
         chart.options.scales.x.time.unit = 'month';
         chart.options.scales.x.time.displayFormats = { month: 'MMM' };
         chart.options.plugins.zoom._currentMode = 'daily';
+        chart.resetZoom();
         chart.update('none');
     });
+    
+    hideLoader();
 })
-.catch(error => console.error('Ошибка загрузки данных:', error));
+.catch(error => {
+    console.error('Ошибка загрузки данных:', error);
+    loader.innerHTML = `
+        <div style="color: #f87171; font-size: 1.1rem; text-align: center;">
+            Ошибка загрузки данных<br>
+            <span style="color: #94a3b8; font-size: 0.9rem;">${error.message}</span>
+        </div>
+    `;
+});
